@@ -1,8 +1,14 @@
 import math
 import pdb
 
+THRESHOLD = 20
+WINDOW_PERCENT = 0.05
+WINDOW_DEFAULT = 3 #Value used for window length as a minimum
+
 def get_error_prob(q):
-	return math.pow(10, 20 / -10.0)
+	return math.pow(10, ord(q) / -10.0)
+
+ERROR_PROB_TOLERANCE = get_error_prob(THRESHOLD)
 
 class Entry(object):
 
@@ -13,6 +19,34 @@ class Entry(object):
 		self.plus_line = plus_line
 		self.qual = qual
 
+
+#TODO: Test
+def window_algorithm(entry):
+	seq = entry.seq
+	qual = entry.qual
+
+	window_len = max(WINDOW_DEFAULT, int(round(len(seq) * WINDOW_PERCENT)))
+	saved_seq = []
+	saved_qual = []
+
+	i = 0
+
+	while i + window_len < len(seq):
+		subseq_qual = qual[i:i+window_len]
+		mean = get_window_mean(subseq_qual)
+
+		if mean < ERROR_PROB_TOLERANCE:
+			saved_seq.append(seq[i])
+			sabed_qual.append(qual[i])
+			i += 1
+		else:
+			i += window_len #discards the whole window
+
+	return Entry(entry.name, ''.join(saved_seq), entry.plus_line, ''.join(saved_qual))
+
+def get_window_mean(qual):
+	arr = [get_error_prob(c) for c in qual]
+	return float(sum(arr))/len(arr)
 
 def parse_file(filename, output, algorithm=None):
 	#pdb.set_trace()
