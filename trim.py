@@ -1,82 +1,66 @@
-import math
-import pdb
+#!/usr/bin/env python2
+from Bio import SeqIO
+import sys
 
-THRESHOLD = 20
-WINDOW_PERCENT = 0.05
-WINDOW_DEFAULT = 3 #Value used for window length as a minimum
-
-def get_error_prob(q):
-	return math.pow(10, ord(q) / -10.0)
-
-ERROR_PROB_TOLERANCE = get_error_prob(THRESHOLD)
-
-class Entry(object):
-
-	#Respectively line 1, 2, 3 and 4
-	def __init__(self, name, seq, plus_line, qual):
-		self.name = name
-		self.seq = seq
-		self.plus_line = plus_line
-		self.qual = qual
+THRESHOLD = 15              #Quality threshold
+WINDOW_PERCENT = 0.05       #Used to calculate window length from total length
+WINDOW_DEFAULT = 3          #Value used for window length as a minimum
+READ_LENGTH_DEFAULT = 20    #Minumum read length
 
 
 #TODO: Test
-def window_algorithm(entry):
-	seq = entry.seq
-	qual = entry.qual
+def window_algorithm(record):
+    """
+    Sildes a window of length = window_length across sequence and calculate
+    the mean value within that window. If the mean value drops below THRESHOLD
+    at a certain point, then a record will be returned representing the sequence
+    with the 3' end removed at that point. If the trimmed read length is lower
+    than READ_LENGTH_DEFAULT, the read will be discarded.
+    """
+    seq = record.seq
+    qual = record.letter_annotations["phred_quality"]
+    
+    window_len = max(WINDOW_DEFAULT, int(round(len(seq) * WINDOW_PERCENT)))
 
-	window_len = max(WINDOW_DEFAULT, int(round(len(seq) * WINDOW_PERCENT)))
-	saved_seq = []
-	saved_qual = []
+    sub_rec = 0
+    i = 0
+    
+    while i + window_len < len(seq):
+        subseq_qual = qual[i:i+window_len]      #Obtain quality values in window
+        mean = get_window_mean(subseq_qual)     #Calculate mean value in window
+        if mean >= THRESHOLD:
+		  i += 1
+        else:
+            if i < READ_LENGTH_DEFAULT:
+                break
+            else:
+                sub_rec = record[0:i]
+                break
 
-	i = 0
-
-	while i + window_len < len(seq):
-		subseq_qual = qual[i:i+window_len]
-		mean = get_window_mean(subseq_qual)
-
-		if mean < ERROR_PROB_TOLERANCE:
-			saved_seq.append(seq[i])
-			sabed_qual.append(qual[i])
-			i += 1
-		else:
-			i += window_len #discards the whole window
-
-	return Entry(entry.name, ''.join(saved_seq), entry.plus_line, ''.join(saved_qual))
-
+   
+    return sub_rec#, discarded_reads, removed_reads
+ 
 def get_window_mean(qual):
-	arr = [get_error_prob(c) for c in qual]
-	return float(sum(arr))/len(arr)
+    """
+    Calculates window mean.
+    """
+    return float(sum(qual))/len(qual)
 
-def parse_file(filename, output, algorithm=None):
-	#pdb.set_trace()
-	with open(filename, 'r') as fd:
-		while True:
-			line = fd.readline().strip()
+def main():
+    """
+    Parses trhough fastq file and trims each record using the sliding window algorithm.
+    """
+    filename = sys.argv[1]
+    output = sys.argv[2]
+    with open(filename) as ih, open(output, 'a') as oh:
+        for record in SeqIO.parse(ih, 'fastq'):
+            trimmed_seq = window_algorithm(record)
 
-			if line == '': #EOF
-				break
-
-			name = line
-			seq = fd.readline().strip()
-			plus_line = fd.readline().strip()
-			qual = fd.readline().strip()
-
-			entry = Entry(name, seq, plus_line, qual)
-
-			#Run algorithm over entry
-
-			#Write
-			write_entry(output, entry)
-			
-
-def write_entry(filename, entry):
-	fd2 = open(filename, 'a')
-	fd2.write(entry.name + '\n')
-	fd2.write(entry.seq + '\n')
-	fd2.write(entry.plus_line + '\n')
-	fd2.write(entry.qual + '\n')
-	fd2.close()
+            if type(trimmed_seq) == type(record):
+                oh.write(trimmed_seq.format('fastq'))
+            else:
+                continue
+            
 
 if __name__ == "__main__":
-	parse_file("miseq1.fq", "output")
+	main()
