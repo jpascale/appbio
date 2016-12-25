@@ -4,6 +4,9 @@ import sys
 #import time
 import argparse
 
+WINDOW_SEQ_TRIMMED = 1
+WINDOW_RETURN_WHOLE_SEQ = 2
+
 def setting_variables():
     """
     Define parameters from user settings.
@@ -98,7 +101,7 @@ def window_algorithm(record):
         subseq_qual = qual[i:i+window_len]      #Obtain quality values in window
         mean = get_window_mean(subseq_qual)     #Calculate mean value in window
         if i + window_len == len(seq):
-                sub_rec = 2
+                sub_rec = WINDOW_RETURN_WHOLE_SEQ
                 break
         elif mean >= THRESHOLD:
             i += 1
@@ -106,7 +109,7 @@ def window_algorithm(record):
             if i < READ_LENGTH_DEFAULT:
                 break
             else:
-                sub_rec = 1
+                sub_rec = WINDOW_SEQ_TRIMMED
                 pos = i
                 break
    
@@ -179,9 +182,9 @@ def main():
             else:
                 for record in SeqIO.parse(ih, 'fastq'):
                     trimmed_seq, pos = window_algorithm(record)
-                    if trimmed_seq == 1:
+                    if trimmed_seq == WINDOW_SEQ_TRIMMED:
                         oh.write(record[0:pos].format('fastq'))
-                    elif trimmed_seq == 2:
+                    elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
                         oh.write(record.format('fastq'))
     except NameError:
         with open(filename) as ih: 
@@ -192,9 +195,9 @@ def main():
             else:
                 for record in SeqIO.parse(ih, 'fastq'):
                     trimmed_seq, pos = window_algorithm(record)
-                    if trimmed_seq == 1:
+                    if trimmed_seq == WINDOW_SEQ_TRIMMED:
                         sys.stdout.write(record[0:pos].format('fastq'))
-                    elif trimmed_seq == 2:
+                    elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
                         sys.stdout.write(record.format('fastq'))
             
     #end = time.time()
