@@ -29,6 +29,12 @@ def setting_variables():
     parser.add_argument("-out", "--outputname", type=str,
                         help="output file name",
                         action="store")
+    parser.add_argument("-tl", "--tolerance", type=int,
+                        help="Set tolerance error len for the mott algorithm. Default is 4.",
+                        action="store")
+    parser.add_argument("-a", "--algorithm", type=str,
+                        help="Use \'mott\' for Mott algorithm usage. Otherwise window algorithm will be used.",
+                        action="store")
     args = parser.parse_args()
     
     global filename
@@ -39,7 +45,16 @@ def setting_variables():
         THRESHOLD = args.threshold
     else:
         THRESHOLD = 20
+
+    global TOLERANCE_LEN
+    if args.tolerance:
+        TOLERANCE_LEN = args.tolerance
+    else:
+        TOLERANCE_LEN = 6
         
+    global ALGORITHM
+    ALGORITHM = "mott" if args.algorithm == "mott" else "window"
+
     global READ_LENGTH_DEFAULT
     if args.length:
         READ_LENGTH_DEFAULT = args.length
@@ -97,6 +112,51 @@ def window_algorithm(record):
    
     return sub_rec, pos
 
+def mott_algorithm(record):
+    """
+    Iterates over the sequence incorporating nucleotides with quality above the threshold.
+    Those nucleotides under the threshold surrounded by high quality nucleotides are 
+    incorporated with a tolerance of TOLERANCE_LEN. If the TOLERANCE_LEN is reached,
+    the subsequence is a candidate to be returned if there is no other candidate that is 
+    longer.
+    """
+
+    seq = record.seq
+    qual = record.letter_annotations["phred_quality"]
+
+    err_count = 0
+
+    base = i = 0
+    max_seq_base = max_seq_i = 0 #Keeps record of the longest subsequence
+
+    while i < len(seq):
+
+        if qual[i] >= THRESHOLD:
+            err_count = 0 #Reset quality error counting.
+        else:
+            err_count += 1
+            if err_count == TOLERANCE_LEN and base + i - TOLERANCE_LEN > max_seq_i - max_seq_base: ## Check if we have a new candidate
+                    max_seq_base = base
+                    max_seq_i = i - TOLERANCE_LEN + 1
+                    base = i
+
+        i += 1
+    print "DEBUG: _________NEW_________________"
+    print seq
+    print "*****"
+
+    if max_seq_base == 0 and max_seq_i == 0: ## The whole sequence is returned
+        print seq
+        return 0, len(seq)
+    elif i - base > max_seq_i - max_seq_base:
+        print seq[base:i]
+        return base, i 
+    else:
+        print seq[max_seq_base:max_seq_i]
+        return max_seq_base, max_seq_i
+
+
+
 def get_window_mean(qual):
     """
     Calculates window mean.
@@ -106,25 +166,36 @@ def get_window_mean(qual):
 def main():
     #start = time.time()
     """
-    Parses trhough fastq file and trims each record using the sliding window algorithm.
+    Parses through fastq file and trims each record using the sliding window algorithm.
     """
     setting_variables()
     try:
         with open(filename) as ih, open(outputfile, 'w') as oh:
-            for record in SeqIO.parse(ih, 'fastq'):
-                trimmed_seq, pos = window_algorithm(record)
-                if trimmed_seq == 1:
-                    oh.write(record[0:pos].format('fastq'))
-                elif trimmed_seq == 2:
-                    oh.write(record.format('fastq'))
+            if ALGORITHM == "mott":
+                print "Running mott"
+                for record in SeqIO.parse(ih, 'fastq'):
+                    base, i = mott_algorithm(record)
+                    oh.write(record[base:i].format('fastq'))
+            else:
+                for record in SeqIO.parse(ih, 'fastq'):
+                    trimmed_seq, pos = window_algorithm(record)
+                    if trimmed_seq == 1:
+                        oh.write(record[0:pos].format('fastq'))
+                    elif trimmed_seq == 2:
+                        oh.write(record.format('fastq'))
     except NameError:
-        with open(filename) as ih:
-            for record in SeqIO.parse(ih, 'fastq'):
-                trimmed_seq, pos = window_algorithm(record)
-                if trimmed_seq == 1:
-                    sys.stdout.write(record[0:pos].format('fastq'))
-                elif trimmed_seq == 2:
-                    sys.stdout.write(record.format('fastq'))
+        with open(filename) as ih: 
+            if ALGORITHM == "mott":
+                for record in SeqIO.parse(ih, 'fastq'):
+                    base, i = mott_algorithm(record)
+                    oh.write(record[base:i].format('fastq'))
+            else:
+                for record in SeqIO.parse(ih, 'fastq'):
+                    trimmed_seq, pos = window_algorithm(record)
+                    if trimmed_seq == 1:
+                        sys.stdout.write(record[0:pos].format('fastq'))
+                    elif trimmed_seq == 2:
+                        sys.stdout.write(record.format('fastq'))
             
     #end = time.time()
     #print(end - start)
