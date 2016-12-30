@@ -32,8 +32,10 @@ def setting_variables():
     parser.add_argument("-out", "--outputname", type=str,
                         help="output file name",
                         action="store")
-    parser.add_argument("-tl", "--tolerance", type=int,
-                        help="Set tolerance error len for the mott algorithm. Default is 4.",
+    parser.add_argument("-tl", "--mott_tolerance", type=float,
+                        help="""Set tolerance error percentage len for the mott algorithm. This parameter accepts a sequence of 
+                        nucleotides under the threshold with a lenght of the given percentage. 
+                        Default: 0.05. Float value between 0 and 1""",
                         action="store")
     parser.add_argument("-a", "--algorithm", type=str,
                         help="Use \'mott\' for Mott algorithm usage. Otherwise window algorithm will be used.",
@@ -49,11 +51,11 @@ def setting_variables():
     else:
         THRESHOLD = 20
 
-    global TOLERANCE_LEN
-    if args.tolerance:
-        TOLERANCE_LEN = args.tolerance
+    global MOTT_PERCENT
+    if args.mott_tolerance:
+        MOTT_PERCENT = args.mott_tolerance
     else:
-        TOLERANCE_LEN = 6
+        MOTT_PERCENT = 0.05
         
     global ALGORITHM
     ALGORITHM = "mott" if args.algorithm == "mott" else "window"
@@ -129,6 +131,8 @@ def mott_algorithm(record):
 
     err_count = 0
 
+    mott_len = int(round(len(seq) * MOTT_PERCENT))
+
     base = i = 0
     max_seq_base = max_seq_i = 0 #Keeps record of the longest subsequence
 
@@ -138,18 +142,19 @@ def mott_algorithm(record):
             err_count = 0 #Reset quality error counting.
         else:
             err_count += 1
-            if err_count == TOLERANCE_LEN and base + i - TOLERANCE_LEN > max_seq_i - max_seq_base: ## Check if we have a new candidate
+            if err_count == mott_len and base + i - mott_len > max_seq_i - max_seq_base: ## Check if we have a new candidate
                     max_seq_base = base
-                    max_seq_i = i - TOLERANCE_LEN + 1
+                    max_seq_i = i - mott_len + 1
                     base = i
 
         i += 1
-    print "DEBUG: _________NEW_________________"
+    print "DEBUG: _______________NEW_________________"
     print seq
     print "*****"
 
     if max_seq_base == 0 and max_seq_i == 0: ## The whole sequence is returned
         print seq
+        print "same"
         return 0, len(seq)
     elif i - base > max_seq_i - max_seq_base:
         print seq[base:i]
