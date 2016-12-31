@@ -125,7 +125,7 @@ def mott_algorithm(record):
     the subsequence is a candidate to be returned if there is no other candidate that is 
     longer.
     """
-
+    #import pdb; pdb.set_trace()
     seq = record.seq
     qual = record.letter_annotations["phred_quality"]
 
@@ -142,10 +142,14 @@ def mott_algorithm(record):
             err_count = 0 #Reset quality error counting.
         else:
             err_count += 1
-            if err_count == mott_len and base + i - mott_len > max_seq_i - max_seq_base: ## Check if we have a new candidate
+            if err_count == mott_len:
+                if i - base + 1 - mott_len > max_seq_i - max_seq_base: ## Check if we have a new candidate
                     max_seq_base = base
                     max_seq_i = i - mott_len + 1
-                    base = i
+                    #base = i + 1##TODO: look for better base
+                    #err_count = 0
+                base = i + 1
+                err_count = 0
 
         i += 1
     print "DEBUG: _______________NEW_________________"
@@ -181,6 +185,7 @@ def main():
         with open(filename) as ih, open(outputfile, 'w') as oh:
             if ALGORITHM == "mott":
                 print "Running mott"
+                #import pdb; pdb.set_trace()
                 for record in SeqIO.parse(ih, 'fastq'):
                     base, i = mott_algorithm(record)
                     oh.write(record[base:i].format('fastq'))
