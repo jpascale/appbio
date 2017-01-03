@@ -123,15 +123,19 @@ def mott_algorithm(record):
     Those nucleotides under the threshold surrounded by high quality nucleotides are 
     incorporated with a tolerance of TOLERANCE_LEN. If the TOLERANCE_LEN is reached,
     the subsequence is a candidate to be returned if there is no other candidate that is 
-    longer.
+    longer. If the trimmed length is  lower than READ_LENGTH_DEFAULT, the read will be discarded
     """
     #import pdb; pdb.set_trace()
     seq = record.seq
     qual = record.letter_annotations["phred_quality"]
 
+    #Discard all N sequences
+    if all([x is "N" for x in seq]):
+        return 0, 0
+
     err_count = 0
 
-    mott_len = int(round(len(seq) * MOTT_PERCENT))
+    mott_len = max(WINDOW_DEFAULT, int(round(len(seq) * MOTT_PERCENT)))
 
     base = i = 0
     max_seq_base = max_seq_i = 0 #Keeps record of the longest subsequence
@@ -152,6 +156,11 @@ def mott_algorithm(record):
                 err_count = 0
 
         i += 1
+    
+
+    if max_seq_i - max_seq_base < READ_LENGTH_DEFAULT:
+        return 0, 0
+
     print "DEBUG: _______________NEW_________________"
     print seq
     print "*****"
@@ -188,7 +197,8 @@ def main():
                 #import pdb; pdb.set_trace()
                 for record in SeqIO.parse(ih, 'fastq'):
                     base, i = mott_algorithm(record)
-                    oh.write(record[base:i].format('fastq'))
+                    if not base == 0 and not i == 0:
+                        oh.write(record[base:i].format('fastq'))
             else:
                 for record in SeqIO.parse(ih, 'fastq'):
                     trimmed_seq, pos = window_algorithm(record)
