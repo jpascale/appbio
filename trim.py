@@ -35,7 +35,7 @@ def setting_variables():
     parser.add_argument("-tl", "--mott_tolerance", type=float,
                         help="""Set tolerance error percentage len for the mott algorithm. This parameter accepts a sequence of 
                         nucleotides under the threshold with a lenght of the given percentage. 
-                        Default: 0.05. Float value between 0 and 1""",
+                        Default: 0.02. Float value between 0 and 1""",
                         action="store")
     parser.add_argument("-a", "--algorithm", type=str,
                         help="Use \'mott\' for Mott algorithm usage. Otherwise window algorithm will be used.",
@@ -55,7 +55,7 @@ def setting_variables():
     if args.mott_tolerance:
         MOTT_PERCENT = args.mott_tolerance
     else:
-        MOTT_PERCENT = 0.05
+        MOTT_PERCENT = 0.02
         
     global ALGORITHM
     ALGORITHM = "mott" if args.algorithm == "mott" else "window"
@@ -161,19 +161,19 @@ def mott_algorithm(record):
     if max_seq_i - max_seq_base < READ_LENGTH_DEFAULT:
         return 0, 0
 
-    print "DEBUG: _______________NEW_________________"
-    print seq
-    print "*****"
+    #print "DEBUG: _______________NEW_________________"
+    #print seq
+    #print "*****"
 
     if max_seq_base == 0 and max_seq_i == 0: ## The whole sequence is returned
-        print seq
-        print "same"
+        #print seq
+        #print "same"
         return 0, len(seq)
     elif i - base > max_seq_i - max_seq_base:
-        print seq[base:i]
+        #print seq[base:i]
         return base, i 
     else:
-        print seq[max_seq_base:max_seq_i]
+        #print seq[max_seq_base:max_seq_i]
         return max_seq_base, max_seq_i
 
 
