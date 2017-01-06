@@ -33,11 +33,6 @@ def setting_variables():
     parser.add_argument("-out", "--outputname", type=str,
                         help="output file name",
                         action="store")
-    parser.add_argument("-tl", "--mott_tolerance", type=float,
-                        help="""Set tolerance error percentage len for the mott algorithm. This parameter accepts a sequence of 
-                        nucleotides under the threshold with a lenght of the given percentage. 
-                        Default: 0.02. Float value between 0 and 1""",
-                        action="store")
     parser.add_argument("-a", "--algorithm", type=str,
                         help="""Use \'cumsum\' for Cumsum algorithm usage.
                         Parameters with cumsum algorithm: Threshold (-t int), Minimum read lenght (-l int), Output filename (-out str). 
@@ -59,12 +54,6 @@ def setting_variables():
 
     if args.threshold:
         THRESHOLD = args.threshold
-
-    global MOTT_PERCENT
-    if args.mott_tolerance:
-        MOTT_PERCENT = args.mott_tolerance
-    else:
-        MOTT_PERCENT = 0.02
 
     global READ_LENGTH_DEFAULT
     if args.length:
