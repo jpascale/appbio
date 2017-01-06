@@ -5,6 +5,7 @@ import math
 #import time
 import argparse
 
+WINDOW_DISCARD = 0
 WINDOW_SEQ_TRIMMED = 1
 WINDOW_RETURN_WHOLE_SEQ = 2
 
@@ -90,7 +91,7 @@ def window_algorithm(record):
     qual = record.letter_annotations["phred_quality"]
     
     window_len = max(WINDOW_DEFAULT, int(round(len(seq) * WINDOW_PERCENT)))
-    sub_rec = 0
+    sub_rec = WINDOW_DISCARD
     pos = 0
     i = 0
     
@@ -98,8 +99,15 @@ def window_algorithm(record):
         subseq_qual = qual[i:i+window_len]      #Obtain quality values in window
         mean = get_window_mean(subseq_qual)     #Calculate mean value in window
         if i + window_len == len(seq):
+            # Patch that solves the problem with the final part of the sequence
+            #import pdb; pdb.set_trace()
+            if mean >= THRESHOLD:
                 sub_rec = WINDOW_RETURN_WHOLE_SEQ
-                break
+            else:
+                sub_rec = WINDOW_SEQ_TRIMMED
+                pos = i
+            break
+
         elif mean >= THRESHOLD:
             i += 1
         else:
@@ -175,7 +183,7 @@ def main():
     """
     setting_variables()
     try:
-        with open(filename) as ih, open(outputfile, 'w') as oh, open("debug.fq", 'w') as debug:
+        with open(filename) as ih, open(outputfile, 'w') as oh:
             if ALGORITHM == "cumsum":
                 print "Running CumSum algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
@@ -192,6 +200,8 @@ def main():
                         oh.write(record[0:pos].format('fastq'))
                     elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
                         oh.write(record.format('fastq'))
+                    else:
+                        print "discarded"
     except NameError:
         with open(filename) as ih: 
             if ALGORITHM == "cumsum":
@@ -207,6 +217,8 @@ def main():
                         sys.stdout.write(record[0:pos].format('fastq'))
                     elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
                         sys.stdout.write(record.format('fastq'))
+                    else:
+                        print "discarded"
             
     #end = time.time()
     #print(end - start)
