@@ -185,6 +185,7 @@ def main():
                     else:
                         debug.write(record.format('fastq'))
             else:
+                print "Running sliding window algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
                     trimmed_seq, pos = window_algorithm(record)
                     if trimmed_seq == WINDOW_SEQ_TRIMMED:
@@ -194,10 +195,12 @@ def main():
     except NameError:
         with open(filename) as ih: 
             if ALGORITHM == "cumsum":
+                print "Running CumSum algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
                     base, i = cumsum_algorithm(record)
                     oh.write(record[base:i].format('fastq'))
             else:
+                print "Running sliding window algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
                     trimmed_seq, pos = window_algorithm(record)
                     if trimmed_seq == WINDOW_SEQ_TRIMMED:
