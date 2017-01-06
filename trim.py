@@ -96,13 +96,22 @@ def window_algorithm(record):
     i = 0
     
     while i + window_len <= len(seq):
-        subseq_qual = qual[i:i+window_len]      #Obtain quality values in window
+        subseq_qual = qual[i:i + window_len]      #Obtain quality values in window
         mean = get_window_mean(subseq_qual)     #Calculate mean value in window
         if i + window_len == len(seq):
+
             # Patch that solves the problem with the final part of the sequence
-            #import pdb; pdb.set_trace()
             if mean >= THRESHOLD:
-                sub_rec = WINDOW_RETURN_WHOLE_SEQ
+                #Patch: Only add entire sequence if last nucleotides are not under the quality
+                if qual[-1] < THRESHOLD:
+                    j = -1
+                    while qual[j] < THRESHOLD:
+                        j -= 1
+                    pos = len(seq) + j
+                    sub_rec = WINDOW_SEQ_TRIMMED
+                else:
+                    sub_rec = WINDOW_RETURN_WHOLE_SEQ
+
             else:
                 sub_rec = WINDOW_SEQ_TRIMMED
                 pos = i
@@ -190,8 +199,6 @@ def main():
                     base, i = cumsum_algorithm(record)
                     if not i == 0:
                         oh.write(record[base:i].format('fastq'))
-                    else:
-                        debug.write(record.format('fastq'))
             else:
                 print "Running sliding window algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
@@ -203,12 +210,13 @@ def main():
                     else:
                         print "discarded"
     except NameError:
+        print "NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR"
         with open(filename) as ih: 
             if ALGORITHM == "cumsum":
                 print "Running CumSum algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
                     base, i = cumsum_algorithm(record)
-                    oh.write(record[base:i].format('fastq'))
+                    sys.stdout.write(record[base:i].format('fastq'))
             else:
                 print "Running sliding window algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
