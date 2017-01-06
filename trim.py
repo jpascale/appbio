@@ -121,64 +121,14 @@ def window_algorithm(record):
    
     return sub_rec, pos
 
-def mott_algorithm_old(record):
-    """
-    Iterates over the sequence incorporating nucleotides with quality above the threshold.
-    Those nucleotides under the threshold surrounded by high quality nucleotides are 
-    incorporated with a tolerance of TOLERANCE_LEN. If the TOLERANCE_LEN is reached,
-    the subsequence is a candidate to be returned if there is no other candidate that is 
-    longer. If the trimmed length is  lower than READ_LENGTH_DEFAULT, the read will be discarded
-    """
-    #import pdb; pdb.set_trace()
-    seq = record.seq
-    qual = record.letter_annotations["phred_quality"]
-
-    #Discard all N sequences
-    if all([x is "N" for x in seq]):
-        return 0, 0
-
-    err_count = 0
-
-    mott_len = max(WINDOW_DEFAULT, int(round(len(seq) * MOTT_PERCENT)))
-
-    base = i = 0
-    max_seq_base = max_seq_i = 0 #Keeps record of the longest subsequence
-
-    while i < len(seq):
-
-        if qual[i] >= THRESHOLD:
-            err_count = 0 #Reset quality error counting.
-        else:
-            err_count += 1
-            if err_count == mott_len:
-                if i - base + 1 - mott_len > max_seq_i - max_seq_base: ## Check if we have a new candidate
-                    max_seq_base = base
-                    max_seq_i = i - mott_len + 1
-                    #base = i + 1##TODO: look for better base
-                    #err_count = 0
-                base = i + 1
-                err_count = 0
-
-        i += 1
-    
-
-    if max_seq_i - max_seq_base < READ_LENGTH_DEFAULT:
-        return 0, 0
-
-    #print "DEBUG: _______________NEW_________________"
-    #print seq
-    #print "*****"
-
-    if max_seq_base == 0 and max_seq_i == 0: ## The whole sequence is returned
-        #print seq
-        #print "same"
-        return 0, len(seq)
-    elif i - base > max_seq_i - max_seq_base:
-        #print seq[base:i]
-        return base, i 
-    else:
-        #print seq[max_seq_base:max_seq_i]
-        return max_seq_base, max_seq_i
+#def mott_algorithm_old(record):
+#    """
+#    Iterates over the sequence incorporating nucleotides with quality above the threshold.
+#    Those nucleotides under the threshold surrounded by high quality nucleotides are 
+#    incorporated with a tolerance of TOLERANCE_LEN. If the TOLERANCE_LEN is reached,
+#    the subsequence is a candidate to be returned if there is no other candidate that is 
+#    longer. If the trimmed length is  lower than READ_LENGTH_DEFAULT, the read will be discarded
+#    """
 
 
 def mott_algorithm(record):
