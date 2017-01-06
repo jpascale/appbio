@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 from Bio import SeqIO
 import sys
+import math
 #import time
 import argparse
 
@@ -44,21 +45,24 @@ def setting_variables():
     
     global filename
     filename = args.input
+
+    global ALGORITHM
+    ALGORITHM = "mott" if args.algorithm == "mott" else "window"
     
     global THRESHOLD   
+    if ALGORITHM == "mott":
+        THRESHOLD = 20 # Threshold for the mott
+    else:
+        THRESHOLD = 20 # Threshold for the window slide
+
     if args.threshold:
         THRESHOLD = args.threshold
-    else:
-        THRESHOLD = 20
 
     global MOTT_PERCENT
     if args.mott_tolerance:
         MOTT_PERCENT = args.mott_tolerance
     else:
         MOTT_PERCENT = 0.02
-        
-    global ALGORITHM
-    ALGORITHM = "mott" if args.algorithm == "mott" else "window"
 
     global READ_LENGTH_DEFAULT
     if args.length:
@@ -117,7 +121,7 @@ def window_algorithm(record):
    
     return sub_rec, pos
 
-def mott_algorithm(record):
+def mott_algorithm_old(record):
     """
     Iterates over the sequence incorporating nucleotides with quality above the threshold.
     Those nucleotides under the threshold surrounded by high quality nucleotides are 
@@ -177,12 +181,55 @@ def mott_algorithm(record):
         return max_seq_base, max_seq_i
 
 
+def mott_algorithm(record):
+    #import pdb; pdb.set_trace()
+    seq = record.seq
+    qual = record.letter_annotations["phred_quality"]
+
+    highest_p = 0
+    highest_p_pos = 0
+    delta_p = 0
+
+    threshold_prob = get_prob_by_quality(THRESHOLD)
+
+    #print qual[0:30]
+    # Remove sequences from the beginning
+    i = 0
+    #import pdb; pdb.set_trace()
+    while i < len(seq) and get_prob_by_quality(qual[i]) > threshold_prob:
+        i += 1
+
+    # Limit case in which all the nucleotides are under the threshold, seq is discarded
+    if i == len(seq):
+        return 0, 0
+
+    highest_p_pos = start_pos = i
+
+    #Find the peak
+    while i < len(seq):
+        delta_p += threshold_prob - get_prob_by_quality(qual[i])
+        if delta_p > highest_p:
+            highest_p = delta_p
+            highest_p_pos = i
+        i += 1
+    
+    if highest_p_pos - start_pos + 1 > READ_LENGTH_DEFAULT:
+        print str(qual[start_pos:start_pos+10]) + " " + str(start_pos) + " " + str(highest_p_pos) + " " + str(len(seq))
+        return start_pos, highest_p_pos
+    else:
+        #print "discarded"
+        return 0, 0
+
 
 def get_window_mean(qual):
     """
     Calculates window mean.
     """
     return float(sum(qual))/len(qual)
+
+def get_prob_by_quality(quality):
+    ''' q = -10 * log10(p) '''
+    return math.pow(10, quality / -10.0)
 
 def main():
     #start = time.time()
@@ -191,14 +238,16 @@ def main():
     """
     setting_variables()
     try:
-        with open(filename) as ih, open(outputfile, 'w') as oh:
+        with open(filename) as ih, open(outputfile, 'w') as oh, open("debug.fq", 'w') as debug:
             if ALGORITHM == "mott":
                 print "Running mott"
                 #import pdb; pdb.set_trace()
                 for record in SeqIO.parse(ih, 'fastq'):
                     base, i = mott_algorithm(record)
-                    if not base == 0 and not i == 0:
+                    if not i == 0:
                         oh.write(record[base:i].format('fastq'))
+                    else:
+                        debug.write(record.format('fastq'))
             else:
                 for record in SeqIO.parse(ih, 'fastq'):
                     trimmed_seq, pos = window_algorithm(record)
