@@ -39,7 +39,9 @@ def setting_variables():
                         Default: 0.02. Float value between 0 and 1""",
                         action="store")
     parser.add_argument("-a", "--algorithm", type=str,
-                        help="Use \'mott\' for Mott algorithm usage. Otherwise window algorithm will be used.",
+                        help="""Use \'cumsum\' for Cumsum algorithm usage.
+                        Parameters with cumsum algorithm: Threshold (-t int), Minimum read lenght (-l int), Output filename (-out str). 
+                        Otherwise sliding window algorithm will be used.""",
                         action="store")
     args = parser.parse_args()
     
@@ -47,11 +49,11 @@ def setting_variables():
     filename = args.input
 
     global ALGORITHM
-    ALGORITHM = "mott" if args.algorithm == "mott" else "window"
+    ALGORITHM = "cumsum" if args.algorithm == "cumsum" else "window"
     
     global THRESHOLD   
-    if ALGORITHM == "mott":
-        THRESHOLD = 20 # Threshold for the mott
+    if ALGORITHM == "cumsum":
+        THRESHOLD = 20 # Threshold for the cumsum
     else:
         THRESHOLD = 20 # Threshold for the window slide
 
@@ -130,9 +132,8 @@ def window_algorithm(record):
 #    longer. If the trimmed length is  lower than READ_LENGTH_DEFAULT, the read will be discarded
 #    """
 
-
-def mott_algorithm(record):
-    #import pdb; pdb.set_trace()
+#TODO: document
+def cumsum_algorithm(record):
     seq = record.seq
     qual = record.letter_annotations["phred_quality"]
 
@@ -142,10 +143,8 @@ def mott_algorithm(record):
 
     threshold_prob = get_prob_by_quality(THRESHOLD)
 
-    #print qual[0:30]
     # Remove sequences from the beginning
     i = 0
-    #import pdb; pdb.set_trace()
     while i < len(seq) and get_prob_by_quality(qual[i]) > threshold_prob:
         i += 1
 
@@ -167,7 +166,6 @@ def mott_algorithm(record):
         print str(qual[start_pos:start_pos+10]) + " " + str(start_pos) + " " + str(highest_p_pos) + " " + str(len(seq))
         return start_pos, highest_p_pos
     else:
-        #print "discarded"
         return 0, 0
 
 
@@ -189,11 +187,10 @@ def main():
     setting_variables()
     try:
         with open(filename) as ih, open(outputfile, 'w') as oh, open("debug.fq", 'w') as debug:
-            if ALGORITHM == "mott":
-                print "Running mott"
-                #import pdb; pdb.set_trace()
+            if ALGORITHM == "cumsum":
+                print "Running CumSum algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
-                    base, i = mott_algorithm(record)
+                    base, i = cumsum_algorithm(record)
                     if not i == 0:
                         oh.write(record[base:i].format('fastq'))
                     else:
@@ -207,9 +204,9 @@ def main():
                         oh.write(record.format('fastq'))
     except NameError:
         with open(filename) as ih: 
-            if ALGORITHM == "mott":
+            if ALGORITHM == "cumsum":
                 for record in SeqIO.parse(ih, 'fastq'):
-                    base, i = mott_algorithm(record)
+                    base, i = cumsum_algorithm(record)
                     oh.write(record[base:i].format('fastq'))
             else:
                 for record in SeqIO.parse(ih, 'fastq'):
