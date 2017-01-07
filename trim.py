@@ -11,14 +11,30 @@ WINDOW_RETURN_WHOLE_SEQ = 2
 
 class StatsHolder(object):
 
+    def __init__(self):
+        self.discard_counter = 0
+        self.accept_counter = 0
+
     def start_timer(self):
         self.start_time = time.time()
 
     def stop_timer(self):
         self.elapsed_time = time.time() - self.start_time
 
+    def discard_sequence(self):
+        self.discard_counter += 1
+
+    def accept_sequence(self):
+        self.accept_counter += 1
+
     def print_stats(self):
         print "Elapsed time: " + str(self.elapsed_time) + " seconds."
+
+        total_seq = self.accept_counter + self.discard_counter
+        if total_seq > 0:
+            print "Discarded sequences: " + str(self.discard_counter) + "/" + str(total_seq) + " (" + str(self.discard_counter/float(total_seq) * 100) + "%)"
+
+
 
 def setting_variables():
     """
@@ -211,8 +227,9 @@ def main():
     Parses through fastq file and trims each record using the sliding window algorithm.
     """
     setting_variables()
-    stats = StatsHolder()
-    stats.start_timer()
+    if STATS:
+        stats = StatsHolder()
+        stats.start_timer()
     try:
         with open(filename) as ih, open(outputfile, 'w') as oh:
             if ALGORITHM == "cumsum":
@@ -220,15 +237,22 @@ def main():
                 for record in SeqIO.parse(ih, 'fastq'):
                     base, i = cumsum_algorithm(record)
                     if not i == 0:
+                        stats.accept_sequence()
                         oh.write(record[base:i].format('fastq'))
+                    else:
+                        stats.discard_sequence()
             else:
                 print "Running sliding window algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
                     trimmed_seq, pos = window_algorithm(record)
                     if trimmed_seq == WINDOW_SEQ_TRIMMED:
                         oh.write(record[0:pos].format('fastq'))
+                        stats.accept_sequence()
                     elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
                         oh.write(record.format('fastq'))
+                        stats.accept_sequence()
+                    else:
+                        stats.discard_sequence()
 
     except NameError:
         print "NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR"
@@ -238,18 +262,27 @@ def main():
                 for record in SeqIO.parse(ih, 'fastq'):
                     base, i = cumsum_algorithm(record)
                     if not i == 0:
+                        stats.accept_sequence()
                         sys.stdout.write(record[base:i].format('fastq'))
+                    else:
+                        stats.discard_sequence()
+
             else:
                 print "Running sliding window algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
                     trimmed_seq, pos = window_algorithm(record)
                     if trimmed_seq == WINDOW_SEQ_TRIMMED:
                         sys.stdout.write(record[0:pos].format('fastq'))
+                        stats.accept_sequence()
                     elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
                         sys.stdout.write(record.format('fastq'))
+                        stats.accept_sequence()
+                    else:
+                        stats.discard_sequence()
 
-    stats.stop_timer()
-    stats.print_stats()
+    if STATS:
+        stats.stop_timer()
+        stats.print_stats()
             
     #end = time.time()
     #print(end - start)
