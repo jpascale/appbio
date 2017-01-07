@@ -34,7 +34,7 @@ def boxplot(data, x=0):
 	plt.plot([x,x], [p75, vmax], 'k')
 	plt.plot([x,x], [p25, vmin], 'k')
 
-	return p25, p50, p75
+	return vmin, p25, p50, p75, vmax
 
 class StatsHolder(object):
 
@@ -71,11 +71,13 @@ class StatsHolder(object):
 		sys.stdout.write('\n')
 		print "Discarded bases distribution"
 
-		p25, p50, p75 = boxplot(self.bp,0)
+		vmin, p25, p50, p75, vmax = boxplot(self.bp,0)
 		#import pdb; pdb.set_trace()
+		print "vmin: " + str(vmin)
 		print "q25: " + str(p25)
 		print "q50: " + str(p50)
 		print "q75: " + str(p75)
+		print "vmax: " + str(vmax)
 		plt.xlim(-0.5,1.5)
 		plt.show()
 
@@ -272,49 +274,45 @@ def main():
 	if STATS:
 		stats = StatsHolder()
 		stats.start_timer()
-	#try:
-	with open(filename) as ih, open(outputfile, 'w') as oh:
-		if ALGORITHM == "cumsum":
-			print "Running CumSum algorithm"
-			for record in SeqIO.parse(ih, 'fastq'):
-				base, i = cumsum_algorithm(record)
-				if not i == 0:
-					oh.write(record[base:i].format('fastq'))
+	try:
+		with open(filename) as ih, open(outputfile, 'w') as oh:
+			if ALGORITHM == "cumsum":
+				print "Running CumSum algorithm"
+				for record in SeqIO.parse(ih, 'fastq'):
+					base, i = cumsum_algorithm(record)
+					if not i == 0:
+						oh.write(record[base:i].format('fastq'))
 
-					if STATS:
-						stats.accept_sequence()
-						stats.add_bp_metric(base, i, len(record))
+						if STATS:
+							stats.accept_sequence()
+							stats.add_bp_metric(base, i, len(record))
 
-				else:
-					if STATS:
-						stats.discard_sequence()
-		else:
-			print "Running sliding window algorithm"
-			for record in SeqIO.parse(ih, 'fastq'):
-				trimmed_seq, pos = window_algorithm(record)
-				if trimmed_seq == WINDOW_SEQ_TRIMMED:
-					oh.write(record[0:pos].format('fastq'))
-					
-					if STATS:
-						stats.accept_sequence()
-						stats.add_bp_metric(0, pos, len(record))
+					else:
+						if STATS:
+							stats.discard_sequence()
+			else:
+				print "Running sliding window algorithm"
+				for record in SeqIO.parse(ih, 'fastq'):
+					trimmed_seq, pos = window_algorithm(record)
+					if trimmed_seq == WINDOW_SEQ_TRIMMED:
+						oh.write(record[0:pos].format('fastq'))
+						
+						if STATS:
+							stats.accept_sequence()
+							stats.add_bp_metric(0, pos, len(record))
 
 
-				elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
-					oh.write(record.format('fastq'))
-					
-					if STATS:
-						stats.accept_sequence()
-						stats.add_bp_metric(0, len(record), len(record))
+					elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
+						oh.write(record.format('fastq'))
+						
+						if STATS:
+							stats.accept_sequence()
+							stats.add_bp_metric(0, len(record), len(record))
 
-				else:
-					if STATS:
-						stats.discard_sequence()
+					else:
+						if STATS:
+							stats.discard_sequence()
 
-	if STATS:
-		stats.stop_timer()
-		stats.print_stats()
-"""
 	except NameError:
 		with open(filename) as ih: 
 			if ALGORITHM == "cumsum":
@@ -353,8 +351,10 @@ def main():
 					else:
 						if STATS:
 							stats.discard_sequence()
-	"""
 	
+	if STATS:
+		stats.stop_timer()
+		stats.print_stats()
 	
 			
 	#end = time.time()
