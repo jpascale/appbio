@@ -229,8 +229,6 @@ def main():
                         oh.write(record[0:pos].format('fastq'))
                     elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
                         oh.write(record.format('fastq'))
-                    else:
-                        print "discarded"
 
     except NameError:
         print "NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR"
@@ -249,8 +247,7 @@ def main():
                         sys.stdout.write(record[0:pos].format('fastq'))
                     elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
                         sys.stdout.write(record.format('fastq'))
-                    else:
-                        print "discarded"
+
     stats.stop_timer()
     stats.print_stats()
             
