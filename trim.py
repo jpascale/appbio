@@ -231,9 +231,7 @@ def main():
                         oh.write(record.format('fastq'))
                     else:
                         print "discarded"
-        stats.stop_timer()
-        stats.print_stats()
-        
+
     except NameError:
         print "NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR"
         with open(filename) as ih: 
@@ -253,6 +251,8 @@ def main():
                         sys.stdout.write(record.format('fastq'))
                     else:
                         print "discarded"
+    stats.stop_timer()
+    stats.print_stats()
             
     #end = time.time()
     #print(end - start)
