@@ -13,28 +13,28 @@ WINDOW_SEQ_TRIMMED = 1
 WINDOW_RETURN_WHOLE_SEQ = 2
 
 def boxplot(data, x=0):
+	#import pdb; pdb.set_trace()
+	sorted_data = np.array(data.items())
+	#sorted_data = np.sort(sorted_data, 0)
+	values = sorted_data[:,0]
+	freqs = sorted_data[:,1]
+	freqs = np.cumsum(freqs)
+	freqs = freqs*1./np.max(freqs)
 
-    sorted_data = np.array(data.items())
-    sorted_data = np.sort(sorted_data, 0)
-    values = sorted_data[:,0]
-    freqs = sorted_data[:,1]
-    freqs = np.cumsum(freqs)
-    freqs = freqs*1./np.max(freqs)
+	#get 25%, 50%, 75% percentiles
+	idx = np.searchsorted(freqs, [0.25, 0.5, 0.75])
+	p25, p50, p75 = values[idx]
+	vmin, vmax = values.min(), values.max()
 
-    #get 25%, 50%, 75% percentiles
-    idx = np.searchsorted(freqs, [0.25, 0.5, 0.75])
-    p25, p50, p75 = values[idx]
-    vmin, vmax = values.min(), values.max()
+	ax = plt.gca()
+	l,r = -0.2+x, 0.2+x
+	#plot boxes
+	plt.plot([l,r], [p50, p50], 'k')
+	plt.plot([l, r, r, l, l], [p25, p25, p75, p75, p25], 'k')
+	plt.plot([x,x], [p75, vmax], 'k')
+	plt.plot([x,x], [p25, vmin], 'k')
 
-    ax = plt.gca()
-    l,r = -0.2+x, 0.2+x
-    #plot boxes
-    plt.plot([l,r], [p50, p50], 'k')
-    plt.plot([l, r, r, l, l], [p25, p25, p75, p75, p25], 'k')
-    plt.plot([x,x], [p75, vmax], 'k')
-    plt.plot([x,x], [p25, vmin], 'k')
-
-    return p25, p50, p75
+	return p25, p50, p75
 
 class StatsHolder(object):
 
@@ -72,6 +72,7 @@ class StatsHolder(object):
 		print "Discarded bases distribution"
 
 		p25, p50, p75 = boxplot(self.bp,0)
+		#import pdb; pdb.set_trace()
 		print "q25: " + str(p25)
 		print "q50: " + str(p50)
 		print "q75: " + str(p75)
