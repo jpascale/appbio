@@ -2,12 +2,23 @@
 from Bio import SeqIO
 import sys
 import math
-#import time
+import time
 import argparse
 
 WINDOW_DISCARD = 0
 WINDOW_SEQ_TRIMMED = 1
 WINDOW_RETURN_WHOLE_SEQ = 2
+
+class StatsHolder(object):
+
+    def start_timer(self):
+        self.start_time = time.time()
+
+    def stop_timer(self):
+        self.elapsed_time = time.time() - self.start_time
+
+    def print_stats(self):
+        print "Elapsed time: " + str(self.elapsed_time) + " seconds."
 
 def setting_variables():
     """
@@ -39,6 +50,9 @@ def setting_variables():
                         Parameters with cumsum algorithm: Threshold (-t int), Minimum read lenght (-l int), Output filename (-out str). 
                         Otherwise sliding window algorithm will be used.""",
                         action="store")
+    parser.add_argument("-s", "--stats",
+                        help="See statistics",
+                        action="store_true")
     args = parser.parse_args()
     
     global filename
@@ -77,6 +91,12 @@ def setting_variables():
     if args.outputname:
         global outputfile
         outputfile = args.outputname
+
+    global STATS
+    if args.stats:
+        STATS = True
+    else:
+        STATS = False
 
 #TODO: Test
 def window_algorithm(record):
@@ -191,6 +211,8 @@ def main():
     Parses through fastq file and trims each record using the sliding window algorithm.
     """
     setting_variables()
+    stats = StatsHolder()
+    stats.start_timer()
     try:
         with open(filename) as ih, open(outputfile, 'w') as oh:
             if ALGORITHM == "cumsum":
@@ -209,6 +231,9 @@ def main():
                         oh.write(record.format('fastq'))
                     else:
                         print "discarded"
+        stats.stop_timer()
+        stats.print_stats()
+        
     except NameError:
         print "NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR  NAME ERROR"
         with open(filename) as ih: 
@@ -216,7 +241,8 @@ def main():
                 print "Running CumSum algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
                     base, i = cumsum_algorithm(record)
-                    sys.stdout.write(record[base:i].format('fastq'))
+                    if not i == 0:
+                        sys.stdout.write(record[base:i].format('fastq'))
             else:
                 print "Running sliding window algorithm"
                 for record in SeqIO.parse(ih, 'fastq'):
