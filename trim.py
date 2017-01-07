@@ -205,7 +205,7 @@ def cumsum_algorithm(record):
         i += 1
     
     if highest_p_pos - start_pos + 1 > READ_LENGTH_DEFAULT:
-        print str(qual[start_pos:start_pos+10]) + " " + str(start_pos) + " " + str(highest_p_pos) + " " + str(len(seq))
+        #print str(qual[start_pos:start_pos+10]) + " " + str(start_pos) + " " + str(highest_p_pos) + " " + str(len(seq))
         return start_pos, highest_p_pos
     else:
         return 0, 0
