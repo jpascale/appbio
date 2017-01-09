@@ -1,0 +1,98 @@
+PROJECT PERSONAL NOTEBOOK
+
+14-12-2016: 
+* Meeting with the team to discuss the strategies we are going to use for DNA trimming. The election of the project was discussed previously in a laboratory session.
+* The first two algorithms we came out with are, on the one hand, a window based algorithm which calculates the mean quality a compares it over a threshold and removes the windows that are beyond, on the other, what we called the "mott" algorithm. The mott algorithm iterates over the sequence looking for nucleotides above the threshold and tolerating N consecutive nucleotides beyond. (N integer number provided by the user).
+* Create the repository on github with the dataset files and all the basic scaffolding to start the project.
+* Code the first implementation of an identity analizer: a parser that reads all the sequences and writes the same sequences without performing any change. Input and output files were compared to check they are the same.
+* Code the first implementation of the sliding window based algorithm according to what was discussed during the ream reunion. Note: This implementation was coded without the use of the BioPython module.
+
+15-12-2016: 
+* Agreed to change the project structure to use BioPython, which makes more sense with the contents of the course.
+
+20-12-2016:
+* Analize the state of each dataset provided by the course webpage using FASTQC. FASTQC is a program which makes reports on sequences in fastq format and shows graphics. It shows a boxplot with the quality of the sequences, among other statistics less relevant in the scope of the project. For each aspect of the fastq file it shows color red if it is not acceptable, yellow if it is acceptable but there is a warning (some anomalities) and green if it is acceptable.
+
+25-12-2016:
+* Coded mott algorithm according to what was discussed in the group meeting. It was coded respecting the new BioPython structure of the project.
+* Remove files from the repository on GitHub that were unnecesary.
+* The sliding window was previously reprogramed by other person to return sequences from the beginning to the last nucleotide before the mean of the window is under the threshold. This algorithm used states (integers). I modified this algorithm not to use magic numbers because it was confusing and the good programming practises do not encourage them.
+
+30-12-2016:
+* Change the mott algorithm to determine the amount of consecutive nucleotides with quality beyond the threshold according to a percentage of the length of the original sequence.
+
+31-12-2016:
+* Performed some tests on the mott algorithm and realized that it had some programming errors. Fixed them.
+
+3-1-2017:
+* Upgrade mott to discard N sequences and sequences that do not fulfill the minimum length requirement.
+
+4-1-2017:
+* Performed some tests with the mott algorithm over the miseq2.fq file with T as threshold and TL as the percentage tolerenace:
+
+-T=22, TL=0.05
+Per base sequence quality scores from green to red
+Per sequence GC content red to green
+Overrepresented sequences red to green
+
+-T=20, TL=0.01
+Per base sequence quality from red to green
+Per tile sequence quality from green to red
+Per sequence gc content from red to green
+Overrepresented sequences from red to green
+
+-T=25, TL=0.01
+Per base sequence quality from red to green
+Per tile sequence quality from green to red
+Per sequence gc content from red to green
+Overrepresented sequences from red to green
+
+-T=28, TL=0.01
+Per base sequence quality from red to green
+Per tile sequence quality from green to red
+Per sequence gc content from red to green
+Overrepresented sequences from red to green
+
+-T=30, TL=0.01
+Per base sequence quality from red to green
+Per tile sequence quality from green to red
+Per sequence gc content from red to green
+Overrepresented sequences from red to green
+
+-T=34, TL=0.03
+Per tile sequence quality from green to red
+Per sequence GC content red to green
+Per base sequence content from red to yellow
+Overrepresented sequences red to green
+
+-T=35, TL=0.03
+Per tile sequence quality from green to red
+Per sequence GC content red to green
+Per base sequence content from red to yellow
+Overrepresented sequences red to green
+
+-T35, TL=0.02
+Basic statistics maintained green
+Per base sequence quality from red to green
+Per tile sequence quality maintained green
+Per sequence quality scored maintained green
+Per base sequence content from red to yellow
+Per sequence GC content from red to green
+Overrepresented sequences from red to green
+
+This last result was the best so far, but the input parameters were over the edge and most of the sequences were discarded so we concluded that this algorithm was just not suitable for DNA trimming and agreed to implement another one.
+
+6-1-2017:
+* Meeting with the team to do some co-working, move on with the report, discuss the new algorthm we were going to use and discuss some statistics to add as an optional parameter when running the trimmer.
+* The new algorithm we developed is a cumulative summatory algorithm. It works with the error probability of each nucleotide. It works adding, for each nucleotide, probability of error given by the threshold minus the probility of error given by the quality of the current nucleotide. It keeps track of the place of the sequence in which the highest value ocurrs and the sequence is trimmed in that position. Also, it removes the nucleotides from the beginning with quality beyond the threshold.
+* Implemented the new algorithm that replaces the mott, we called it cumsum algorithm. Also, removed all the mott leftover parameters and variables in order to have a clean and clear code.
+* Added verbose message that shows which algorithm is being ran.
+* Tested the sliding window algorithm with the two .fq files provided by the course web page and with a real over 600MB file. Analyzed the output with fastqc program and discovered, in this last file, that the last parts of the sequences tended to be under the threshold. I suspected that there was an error in the algorithm when including complete sequences, so I splited the output of the algorithm into two files: one with sequences that have not been trimmed, and another with the trimmed sequences. I analyzed both files and the second one was okay, and the first one presented this problem. I went through the algorithm again and discovered that there was a limit case went the window was in the last position. I upgraded the algorithm to remove nucleotides that are beyond the threshold in this case.
+* Fixed an error ocurring when a name for the output file was not provided.
+* Dicussed which statisctics would our program provide. The ones that are most relevant are: execution time, percentage of discarded sequences and a boxplot specifying, of the sequences that are included, which percentage is included.
+* Tested the CumSum algorithm with the three .fq files mentioned before, and the results were the expected ones.
+
+7-1-2017:
+* Coded the StatsHolder class which it is used to measure the running time, and also make "conversions" every time a sequence is added or discarded.
+* Clean the code.
+
