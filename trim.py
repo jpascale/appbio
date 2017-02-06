@@ -4,7 +4,7 @@ import sys
 import math
 import time
 import argparse
-
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -159,7 +159,6 @@ def setting_variables():
 	else:
 		STATS = False
 
-#TODO: Test
 def window_algorithm(record):
 	"""
 	Sildes a window of length = window_length across sequence and calculate
@@ -169,6 +168,9 @@ def window_algorithm(record):
 	than READ_LENGTH_DEFAULT, the read will be discarded.
 	"""
 	seq = record.seq
+	#Check if read is horter than read length
+	if len(seq) < READ_LENGTH_DEFAULT:
+		return None, None, True
 	qual = record.letter_annotations["phred_quality"]
 	
 	window_len = max(WINDOW_DEFAULT, int(round(len(seq) * WINDOW_PERCENT)))
@@ -208,7 +210,7 @@ def window_algorithm(record):
 				pos = i
 				break
    
-	return sub_rec, pos
+	return sub_rec, pos, False
 
 #def mott_algorithm_old(record):
 #    """
@@ -219,9 +221,12 @@ def window_algorithm(record):
 #    longer. If the trimmed length is  lower than READ_LENGTH_DEFAULT, the read will be discarded
 #    """
 
-#TODO: document
+
 def cumsum_algorithm(record):
 	seq = record.seq
+	#Check if read is horter than read length
+	if len(seq) < READ_LENGTH_DEFAULT:
+		return None, None, True
 	qual = record.letter_annotations["phred_quality"]
 
 	highest_p = 0
@@ -237,7 +242,7 @@ def cumsum_algorithm(record):
 
 	# Limit case in which all the nucleotides are under the threshold, seq is discarded
 	if i == len(seq):
-		return 0, 0
+		return 0, 0, False
 
 	highest_p_pos = start_pos = i
 
@@ -250,9 +255,9 @@ def cumsum_algorithm(record):
 		i += 1
 	
 	if highest_p_pos - start_pos + 1 > READ_LENGTH_DEFAULT:
-		return start_pos, highest_p_pos
+		return start_pos, highest_p_pos, None
 	else:
-		return 0, 0
+		return 0, 0, False
 
 
 def get_window_mean(qual):
@@ -266,20 +271,28 @@ def get_prob_by_quality(quality):
 	return math.pow(10, quality / -10.0)
 
 def main():
-	#start = time.time()
 	"""
 	Parses through fastq file and trims each record using the sliding window algorithm.
 	"""
-	setting_variables()
+	setting_variables() #Obtain global variables from user input
+
+	if os.stat(filename).st_size == 0:
+		sys.exit("file is empty")
 	if STATS:
 		stats = StatsHolder()
 		stats.start_timer()
+
+	short_reads = 0 #Counter for reads shorter than default read length
+
 	try:
 		with open(filename) as ih, open(outputfile, 'w') as oh:
 			if ALGORITHM == "cumsum":
-				print "Running CumSum algorithm"
+				sys.stderr.write("Running CumSum algorithm\n")
 				for record in SeqIO.parse(ih, 'fastq'):
-					base, i = cumsum_algorithm(record)
+					base, i, short = cumsum_algorithm(record)
+					if short:
+							short_reads += 1
+							continue
 					if not i == 0:
 						oh.write(record[base:i].format('fastq'))
 
@@ -291,9 +304,12 @@ def main():
 						if STATS:
 							stats.discard_sequence()
 			else:
-				print "Running sliding window algorithm"
+				sys.stderr.write("Running sliding window algorithm\n")
 				for record in SeqIO.parse(ih, 'fastq'):
-					trimmed_seq, pos = window_algorithm(record)
+					trimmed_seq, pos, short = window_algorithm(record)
+					if short:
+							short_reads += 1
+							continue
 					if trimmed_seq == WINDOW_SEQ_TRIMMED:
 						oh.write(record[0:pos].format('fastq'))
 						
@@ -313,51 +329,62 @@ def main():
 						if STATS:
 							stats.discard_sequence()
 
-	except NameError:
+	except NameError:      # If no output filename is specified, write to stdout.
 		with open(filename) as ih: 
-			if ALGORITHM == "cumsum":
-				print "Running CumSum algorithm"
-				for record in SeqIO.parse(ih, 'fastq'):
-					base, i = cumsum_algorithm(record)
-					if not i == 0:
-						sys.stdout.write(record[base:i].format('fastq'))
+			try:
+				if ALGORITHM == "cumsum":
+					sys.stderr.write("Running CumSum algorithm\n")
 
-						if STATS:
-							stats.accept_sequence()
-							stats.add_bp_metric(base, i, len(record))
+					for record in SeqIO.parse(ih, 'fastq'):
+						base, i, short = cumsum_algorithm(record)
+						if short:
+							short_reads += 1
+							continue
+						if not i == 0:
+							sys.stdout.write(record[base:i].format('fastq'))
 
-					else:
-						if STATS:
-							stats.discard_sequence()
+							if STATS:
+								stats.accept_sequence()
+								stats.add_bp_metric(base, i, len(record))
 
-			else:
-				print "Running sliding window algorithm"
-				for record in SeqIO.parse(ih, 'fastq'):
-					trimmed_seq, pos = window_algorithm(record)
-					if trimmed_seq == WINDOW_SEQ_TRIMMED:
-						sys.stdout.write(record[0:pos].format('fastq'))
+						else:
+							if STATS:
+								stats.discard_sequence()
 
-						if STATS:
-							stats.accept_sequence()
-							stats.add_bp_metric(0, pos, len(record))
+				else:
+					sys.stderr.write("Running sliding window algorithm\n")
+					for record in SeqIO.parse(ih, 'fastq'):
+						trimmed_seq, pos, short = window_algorithm(record)
+						if short:
+							short_reads += 1
+							continue
+						elif trimmed_seq == WINDOW_SEQ_TRIMMED:
+							sys.stdout.write(record[0:pos].format('fastq'))
 
-					elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
-						sys.stdout.write(record.format('fastq'))
+							if STATS:
+								stats.accept_sequence()
+								stats.add_bp_metric(0, pos, len(record))
 
-						if STATS:
-							stats.accept_sequence()
-							stats.add_bp_metric(0, len(record), len(record))	
+						elif trimmed_seq == WINDOW_RETURN_WHOLE_SEQ:
+							sys.stdout.write(record.format('fastq'))
 
-					else:
-						if STATS:
-							stats.discard_sequence()
-	
+							if STATS:
+								stats.accept_sequence()
+								stats.add_bp_metric(0, len(record), len(record))	
+						else:
+							if STATS:		
+								stats.discard_sequence()
+			except ValueError as e: #Obtain raised error from Biopython
+				print(e)
+				print("Please check that the file is correctly formatted.")
+				sys.exit()
+
 	if STATS:
 		stats.stop_timer()
 		stats.print_stats()
-	
+	if short_reads != 0:
+		sys.stderr.write("Warning: " + str(short_reads) + " read(s) shorter than default read length\n")
 			
-	#end = time.time()
-	#print(end - start)
+
 if __name__ == "__main__":
 	main()
