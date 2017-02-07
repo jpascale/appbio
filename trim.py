@@ -168,7 +168,8 @@ def window_algorithm(record):
 	than READ_LENGTH_DEFAULT, the read will be discarded.
 	"""
 	seq = record.seq
-	#Check if read is horter than read length
+
+	#Check if read is shorter than read length
 	if len(seq) < READ_LENGTH_DEFAULT:
 		return None, None, True
 	qual = record.letter_annotations["phred_quality"]
@@ -197,7 +198,7 @@ def window_algorithm(record):
 
 			else:
 				sub_rec = WINDOW_SEQ_TRIMMED
-				pos = i
+				pos = i + window_len/2
 			break
 
 		elif mean >= THRESHOLD:
@@ -207,7 +208,7 @@ def window_algorithm(record):
 				break
 			else:
 				sub_rec = WINDOW_SEQ_TRIMMED
-				pos = i
+				pos = i + window_len/2
 				break
    
 	return sub_rec, pos, False
@@ -224,7 +225,7 @@ def window_algorithm(record):
 
 def cumsum_algorithm(record):
 	seq = record.seq
-	#Check if read is horter than read length
+	#Check if read is horter than read length 
 	if len(seq) < READ_LENGTH_DEFAULT:
 		return None, None, True
 	qual = record.letter_annotations["phred_quality"]
@@ -249,7 +250,7 @@ def cumsum_algorithm(record):
 	#Find the peak
 	while i < len(seq):
 		delta_p += threshold_prob - get_prob_by_quality(qual[i])
-		if delta_p > highest_p:
+		if delta_p >= highest_p:
 			highest_p = delta_p
 			highest_p_pos = i
 		i += 1
@@ -294,7 +295,7 @@ def main():
 							short_reads += 1
 							continue
 					if not i == 0:
-						oh.write(record[base:i].format('fastq'))
+						oh.write(record[base:i+1].format('fastq'))
 
 						if STATS:
 							stats.accept_sequence()
@@ -341,7 +342,7 @@ def main():
 							short_reads += 1
 							continue
 						if not i == 0:
-							sys.stdout.write(record[base:i].format('fastq'))
+							sys.stdout.write(record[base:i+1].format('fastq'))
 
 							if STATS:
 								stats.accept_sequence()
@@ -384,7 +385,6 @@ def main():
 		stats.print_stats()
 	if short_reads != 0:
 		sys.stderr.write("Warning: " + str(short_reads) + " read(s) shorter than default read length\n")
-			
 
 if __name__ == "__main__":
 	main()
